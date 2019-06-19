@@ -100,10 +100,8 @@ int main(int ,char *[])
     for(int i=0; i< 8; i++)
         threads[i]->start();
 
-    for(int i=0; i< 8; i++)
-        threads[i]->wait();
+    threads[7]->wait();
 }
-
 ```
 ## Avec Sémaphore
 ```C++
