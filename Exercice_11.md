@@ -36,3 +36,38 @@ public:
     }
 };
 ```
+
+## Avec Variable de Condition
+```C++
+#include <QWaitCondition>
+#include <QMutex>
+
+class PcoBarrier
+{
+private:
+    QWaitCondition cond;
+    QMutex mutex;
+    unsigned nbToWait, compteur;
+public:
+    PcoBarrier(unsigned int nbToWait): nbToWait(nbToWait), compteur(0)
+    {
+    }
+
+    ~PcoBarrier()
+    {
+    }
+
+    void wait()
+    {
+        mutex.lock();
+        compteur++;
+
+        while(compteur < nbToWait) {
+            cond.wait(&mutex);
+        }
+
+        cond.wakeOne();
+        mutex.unlock();
+    }
+};
+```
