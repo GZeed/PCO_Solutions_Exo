@@ -92,3 +92,84 @@ public:
     }
 };
 ```
+
+## Avec Variable de Condition
+```cpp
+#include <QSemaphore>
+#include <QWaitCondition>
+#include <QMutex>
+
+#define CARWEIGHT 1
+#define TRUCKWEIGHT 10
+
+
+class BridgeManager
+{
+private:
+    unsigned maxWeight, currentWeight;
+    QWaitCondition cond;
+    QWaitCondition fifo;
+    bool accesParking;
+    QMutex mutex;
+public:
+    BridgeManager(unsigned int maxWeight): maxWeight(maxWeight), currentWeight(0), accesParking(true)
+    {
+
+    }
+
+    ~BridgeManager()
+    {
+
+    }
+
+    void vehiculeAccess(unsigned weightVehicule)
+    {
+        mutex.lock();
+
+        while(!accesParking) {
+            fifo.wait(&mutex);
+        }
+
+        accesParking = false;
+
+        while(currentWeight + weightVehicule > maxWeight) {
+            cond.wait(&mutex);
+        }
+
+        currentWeight += weightVehicule;
+        accesParking = true;
+        fifo.wakeOne();
+        mutex.unlock();
+    }
+
+    void vehiculeLeave(unsigned weightVehicule)
+    {
+        mutex.lock();
+
+        currentWeight -= weightVehicule;
+        cond.wakeOne();
+
+        mutex.unlock();
+    }
+
+    void carAccess()
+    {
+        vehiculeAccess(CARWEIGHT);
+    }
+
+    void truckAccess()
+    {
+        vehiculeAccess(TRUCKWEIGHT);
+    }
+
+    void carLeave()
+    {
+        vehiculeLeave(CARWEIGHT);
+    }
+
+    void truckLeave()
+    {
+        vehiculeLeave(TRUCKWEIGHT);
+    }
+};
+```
