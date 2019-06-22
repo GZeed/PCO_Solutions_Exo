@@ -148,3 +148,70 @@ public:
 };
 #endif // READERWRITERCLASSAB_H
 ```
+
+## Avec Moniteur de Hoare
+```C++
+#ifndef READERWRITERCLASSAB_H
+#define READERWRITERCLASSAB_H
+
+#include <QSemaphore>
+#include <QMutex>
+
+#include "abstractreaderwriter.h"
+#include "hoaremonitor.h"
+
+class ReaderWriterClassAB : HoareMonitor
+{
+protected:
+    QSemaphore fifo;
+    Condition cond;
+    int nbReadersA;
+    int nbReadersB;
+public:
+  ReaderWriterClassAB(): fifo(1), nbReadersA(0), nbReadersB(0) {
+  }
+
+  void lockA() {
+      fifo.acquire();
+      monitorIn();
+
+      nbReadersA++;
+
+      if(nbReadersB >= 1)
+          wait(cond);
+
+      monitorOut();
+      fifo.release();
+  }
+
+  void unlockA() {
+      monitorIn();
+      nbReadersA--;
+      if(nbReadersA == 0)
+          signal(cond);
+      monitorOut();
+  }
+
+  void lockB() {
+      fifo.acquire();
+      monitorIn();
+
+      nbReadersB++;
+
+      if(nbReadersA >= 1)
+          wait(cond);
+
+      monitorOut();
+      fifo.release();
+  }
+
+  void unlockB() {
+      monitorIn();
+      nbReadersB--;
+      if(nbReadersB == 0)
+          signal(cond);
+      monitorOut();
+  }
+};
+#endif // READERWRITERCLASSAB_H
+```
