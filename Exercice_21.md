@@ -72,3 +72,79 @@ public:
 };
 #endif // READERWRITERCLASSAB_H
 ```
+
+## Avec variable de condition
+```c++
+#ifndef READERWRITERCLASSAB_H
+#define READERWRITERCLASSAB_H
+
+#include <QSemaphore>
+#include <QMutex>
+#include <QWaitCondition>
+
+#include "abstractreaderwriter.h"
+#include "hoaremonitor.h"
+
+
+class ReaderWriterClassAB
+{
+protected:
+    QMutex mutex;
+    QSemaphore fifo;
+    QWaitCondition cond;
+    int nbReadersA;
+    int nbReadersB;
+public:
+  ReaderWriterClassAB(): fifo(1), nbReadersA(0), nbReadersB(0) {
+  }
+
+  void lockA() {
+      fifo.acquire();
+
+      mutex.lock();
+      nbReadersA++;
+
+      while(nbReadersB >= 1) {
+          cond.wait(&mutex);
+      }
+
+      mutex.unlock();
+      fifo.release();
+  }
+
+  void unlockA() {
+      mutex.lock();
+      nbReadersA--;
+
+      if(nbReadersA == 0)
+        cond.wakeOne();
+
+      mutex.unlock();
+  }
+
+  void lockB() {
+      fifo.acquire();
+
+      mutex.lock();
+      nbReadersB++;
+
+      while(nbReadersA >= 1) {
+          cond.wait(&mutex);
+      }
+
+      mutex.unlock();
+      fifo.release();
+  }
+
+  void unlockB() {
+      mutex.lock();
+      nbReadersB--;
+
+      if(nbReadersB == 0)
+        cond.wakeOne();
+
+      mutex.unlock();
+  }
+};
+#endif // READERWRITERCLASSAB_H
+```
