@@ -78,10 +78,25 @@ public:
 #ifndef READERWRITERCLASSAB_H
 #define READERWRITERCLASSAB_H
 
+/** @file readerwriterclassab.h
+* @brief Reader-writer with equal priority between two classes
+*
+* Implementation of a reader-writer resource manager with equal
+* priority for both classes. Mutual exclusion between classes must be
+* ensured
+*
+*
+*
+* @author Yann Thoma
+* @date 15.05.2017
+* @bug No known bug
+*/
+
+
 #include <QSemaphore>
 #include <QMutex>
+#include <iostream>
 #include <QWaitCondition>
-
 #include "abstractreaderwriter.h"
 #include "hoaremonitor.h"
 
@@ -89,62 +104,65 @@ public:
 class ReaderWriterClassAB
 {
 protected:
-    QMutex mutex;
-    QSemaphore fifo;
-    QWaitCondition cond;
-    int nbReadersA;
-    int nbReadersB;
+QMutex mutex;
+QWaitCondition condWaitingA;
+QWaitCondition condWaitingB;
+int nbA;
+int nbB;
 public:
-  ReaderWriterClassAB(): fifo(1), nbReadersA(0), nbReadersB(0) {
-  }
+ReaderWriterClassAB(): nbA(0), nbB(0) {
+}
 
-  void lockA() {
-      fifo.acquire();
 
-      mutex.lock();
-      nbReadersA++;
 
-      while(nbReadersB >= 1) {
-          cond.wait(&mutex);
-      }
+void lockA() {
 
-      mutex.unlock();
-      fifo.release();
-  }
+mutex.lock();
 
-  void unlockA() {
-      mutex.lock();
-      nbReadersA--;
+while(nbB >= 1) {
+condWaitingA.wait(&mutex);
+}
+nbA++;
 
-      if(nbReadersA == 0)
-        cond.wakeOne();
+mutex.unlock();
+}
 
-      mutex.unlock();
-  }
+void unlockA() {
+mutex.lock();
+nbA--;
 
-  void lockB() {
-      fifo.acquire();
+if(nbA <= 0){
+nbA = 0;
+condWaitingB.wakeAll();
+}
 
-      mutex.lock();
-      nbReadersB++;
+mutex.unlock();
+}
 
-      while(nbReadersA >= 1) {
-          cond.wait(&mutex);
-      }
+void lockB() {
 
-      mutex.unlock();
-      fifo.release();
-  }
+mutex.lock();
 
-  void unlockB() {
-      mutex.lock();
-      nbReadersB--;
+while(nbA >= 1) {
+condWaitingB.wait(&mutex);
+}
 
-      if(nbReadersB == 0)
-        cond.wakeOne();
+nbB++;
+mutex.unlock();
 
-      mutex.unlock();
-  }
+}
+
+void unlockB() {
+mutex.lock();
+nbB--;
+
+if(nbB <= 0){
+nbB = 0;
+condWaitingA.wakeAll();
+}
+
+mutex.unlock();
+}
 };
 #endif // READERWRITERCLASSAB_H
 ```
