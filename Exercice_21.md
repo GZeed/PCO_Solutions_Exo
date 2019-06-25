@@ -2,8 +2,6 @@
 ## Priorité égale, sémaphore
 
 ```c++
-#ifndef READERWRITERCLASSAB_H
-#define READERWRITERCLASSAB_H
 
 #include <QSemaphore>
 #include <QMutex>
@@ -17,34 +15,57 @@ class ReaderWriterClassAB
 protected:
     int nbA;
     int nbB;
+
+    int nbWaitingA = 0;
+    int nbWaitingB = 0;
+    QSemaphore waitingA;
+    QSemaphore waitingB;
+
     QSemaphore fifo;
-    QMutex mutex ;
-    QSemaphore jeton;
+
+    QMutex mutex;
 
 
 public:
-  ReaderWriterClassAB() : fifo(1), jeton(1){
+  ReaderWriterClassAB(){
       this->nbA = 0;
       this->nbB = 0;
+      nbWaitingA = 0;
+      nbWaitingB = 0;
+
+
+      fifoB.release();
+
+
   }
 
   void lockA() {
-      fifo.acquire();
-      mutex.lock();
-      if(nbA++ == 0){
-          mutex.unlock();
-          jeton.acquire();
-      } else{
-          mutex.unlock();
-      }
-      // Accès à la ressource
-      fifo.release();
+     fifo.acquire();
+     mutex.lock();
+
+     if(nbB == 0){
+        nbA++;
+        mutex.unlock();
+
+     }else{
+        nbWaitingA++;
+        mutex.unlock();
+        waitingA.acquire();
+        mutex.lock();
+        nbA++;
+        mutex.unlock();
+     }
+
+     fifo.release();
   }
 
   void unlockA() {
       mutex.lock();
-      if(nbA-- == 1){
-          jeton.release();
+      nbA--;
+      if(nbA <= 0){
+        nbA = 0;
+        waitingB.release(nbWaitingB);
+        nbWaitingB = 0;
       }
       mutex.unlock();
   }
@@ -52,25 +73,36 @@ public:
   void lockB() {
       fifo.acquire();
       mutex.lock();
-      if(nbB++ == 0){
-          mutex.unlock();
-          jeton.acquire();
-      } else{
-          mutex.unlock();
-      }
-      // Accès à la ressource
+
+     if(nbA == 0){
+        nbB++;
+        mutex.unlock();
+
+     }else{
+        nbWaitingB++;
+        mutex.unlock();
+        waitingB.acquire();
+        mutex.lock();
+        nbB++;
+        mutex.unlock();
+     }
+
       fifo.release();
+
+      //SC en sortie
   }
 
   void unlockB() {
-      mutex.lock();
-      if(nbB-- == 1){
-          jeton.release();
+     mutex.lock();
+      nbB--;
+      if(nbB <= 0){
+        nbB = 0;
+        waitingA.release(nbWaitingA);
+        nbWaitingA = 0;
       }
       mutex.unlock();
   }
 };
-#endif // READERWRITERCLASSAB_H
 ```
 
 ## Avec variable de condition
